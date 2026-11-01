@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Подписки — трекер списаний</title>
+  <meta name="description" content="Сколько уходит на подписки в месяц и в год, календарь ближайших списаний и подсказки, от чего можно отказаться.">
+  <meta name="theme-color" content="#0f1115">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔁</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=JetBrains+Mono:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --bg: #0f1115; --card: #181b22; --card2: #20242e; --line: #2a2f3b; --text: #eef0f5; --muted: #8b91a1; --acc: #b6f36a; --warn: #ffb547; --bad: #ff6b6b; color-scheme: dark; }
+    html { -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.5 Manrope, system-ui, sans-serif; }
+    button, input, select { font: inherit; color: inherit; }
+    button { cursor: pointer; }
+    .app { max-width: 980px; margin: 0 auto; padding: calc(20px + env(safe-area-inset-top)) 16px calc(40px + env(safe-area-inset-bottom)); }
+    header { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
+    header h1 { margin: 0; font-size: 24px; font-weight: 800; }
+    header .add { margin-left: auto; padding: 11px 16px; border: 0; border-radius: 12px; background: var(--acc); color: #10200a; font-weight: 800; }
+    .grid { display: grid; gap: 14px; }
+    @media (min-width: 860px) { .grid { grid-template-columns: 1.15fr 1fr; align-items: start; } }
+    .card { padding: 18px; border-radius: 22px; background: var(--card); border: 1px solid var(--line); min-width: 0; }
+    .card h2 { margin: 0 0 12px; font-size: 16px; }
+    .totals { display: grid; grid-template-columns: auto 1fr; gap: 18px; align-items: center; }
+    .totals small { color: var(--muted); font-weight: 600; }
+    .totals .big { font: 800 clamp(30px, 8vw, 42px)/1.05 'JetBrains Mono', monospace; letter-spacing: -0.03em; }
+    .totals .year { margin-top: 6px; font-weight: 700; }
+    .totals .year span { color: var(--acc); }
+    .compare { margin-top: 8px; color: var(--muted); font-size: 13px; }
+    .donut { width: 128px; height: 128px; }
+    .legend { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 14px; font-size: 13px; color: var(--muted); }
+    .legend i { display: inline-block; width: 10px; height: 10px; margin-right: 6px; border-radius: 3px; }
+    .list { display: grid; gap: 8px; }
+    .sub { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 12px; align-items: center; padding: 10px 12px; border-radius: 16px; background: var(--card2); border: 1px solid transparent; text-align: left; width: 100%; }
+    .sub:hover { border-color: var(--line); }
+    .sub .ico { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 13px; font-size: 22px; background: color-mix(in srgb, var(--c) 22%, transparent); }
+    .sub b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sub small { color: var(--muted); font-size: 12.5px; }
+    .sub .price { text-align: right; font: 800 15px 'JetBrains Mono', monospace; white-space: nowrap; }
+    .sub .price small { display: block; font: 600 12px Manrope, sans-serif; }
+    .soon { color: var(--warn) !important; font-weight: 700; }
+    .empty { padding: 26px 10px; text-align: center; color: var(--muted); }
+    .presets { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; justify-content: center; }
+    .presets button { padding: 7px 11px; border: 1px solid var(--line); border-radius: 999px; background: transparent; font-size: 13px; font-weight: 600; }
+    .cal__head { display: flex; align-items: center; gap: 8px; margin-bottom: 10px; }
+    .cal__head b { flex: 1; text-transform: capitalize; }
+    .cal__head button { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: 10px; background: transparent; }
+    .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+    .cal .wd { text-align: center; font-size: 11px; color: var(--muted); font-weight: 700; padding-bottom: 4px; }
+    .day { min-height: 46px; padding: 4px; border-radius: 10px; background: var(--card2); font-size: 12px; font-weight: 700; color: var(--muted); border: 1px solid transparent; text-align: left; }
+    .day.out { opacity: 0.25; }
+    .day.today { border-color: var(--acc); color: var(--text); }
+    .day.has { color: var(--text); }
+    .day span { display: block; font-size: 13px; line-height: 1.2; letter-spacing: -2px; }
+    .day.sel { background: #2c3240; }
+    .daylist { margin-top: 10px; font-size: 14px; color: var(--muted); min-height: 22px; }
+    .tip { display: grid; grid-template-columns: 28px 1fr; gap: 10px; padding: 12px; border-radius: 14px; background: var(--card2); margin-top: 8px; font-size: 14px; }
+    .tip b { color: var(--acc); }
+    dialog { width: min(440px, calc(100% - 24px)); padding: 0; border: 1px solid var(--line); border-radius: 22px; background: var(--card); color: var(--text); }
+    dialog::backdrop { background: rgba(0, 0, 0, 0.6); backdrop-filter: blur(3px); }
+    form { display: grid; gap: 12px; padding: 20px; }
+    form h3 { margin: 0; font-size: 18px; }
+    label { display: grid; gap: 6px; font-size: 13px; font-weight: 700; color: var(--muted); }
+    input, select { width: 100%; min-width: 0; max-width: 100%; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--card2); font-size: 16px; outline: none; }
+    input:focus, select:focus { border-color: var(--acc); }
+    .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 10px; }
+    .seg { display: flex; gap: 6px; }
+    .seg label { flex: 1; display: block; }
+    .seg input { display: none; }
+    .seg span { display: block; padding: 10px 4px; border: 1px solid var(--line); border-radius: 12px; text-align: center; color: var(--text); font-weight: 600; font-size: 13px; cursor: pointer; }
+    .seg input:checked + span { border-color: var(--acc); background: rgba(182, 243, 106, 0.12); }
+    .actions { display: flex; gap: 8px; }
+    .actions button { flex: 1; padding: 13px; border-radius: 12px; border: 1px solid var(--line); background: transparent; font-weight: 800; }
+    .actions .save { background: var(--acc); border-color: var(--acc); color: #10200a; }
+    .actions .del { flex: none; color: var(--bad); }
+    .back { display: inline-block; margin-top: 18px; color: var(--muted); font-size: 13px; }
+  </style>
+</head>
+<body>
+<div class="app">
+  <header><h1>🔁 Подписки</h1><button class="add" id="add">+ Добавить</button></header>
+  <div class="grid">
+    <div class="grid" style="grid-template-columns:minmax(0,1fr)">
+      <section class="card">
+        <div class="totals">
+          <svg class="donut" id="donut" viewBox="0 0 42 42"></svg>
+          <div><small>В месяц</small><div class="big" id="month">0 ₽</div><div class="year">В год: <span id="year">0 ₽</span></div><div class="compare" id="compare"></div></div>
+        </div>
+        <div class="legend" id="legend"></div>
+      </section>
+      <section class="card"><h2>Все подписки</h2><div class="list" id="list"></div></section>
+    </div>
+    <div class="grid" style="grid-template-columns:minmax(0,1fr)">
+      <section class="card">
+        <div class="cal__head"><button id="prev" aria-label="Предыдущий месяц">‹</button><b id="monthName"></b><button id="nextM" aria-label="Следующий месяц">›</button></div>
+        <div class="cal" id="cal"></div>
+        <div class="daylist" id="daylist">Нажмите на день, чтобы увидеть списания.</div>
+      </section>
+      <section class="card"><h2>Подсказки</h2><div id="tips"></div></section>
+    </div>
+  </div>
+  <a class="back" href="/">← Портфолио</a>
+</div>
+
+<dialog id="dlg">
+  <form method="dialog" id="form">
+    <h3 id="formTitle">Новая подписка</h3>
+    <div class="two"><label>Значок<input name="emoji" maxlength="4" value="📺"></label><label>Название<input name="name" required placeholder="Например, Музыка"></label></div>
+    <div class="two"><label>Цена, ₽<input name="price" type="number" min="1" step="1" required></label><label>Следующее списание<input name="next" type="date" required></label></div>
+    <label>Период</label>
+    <div class="seg"><label><input type="radio" name="period" value="week"><span>Неделя</span></label><label><input type="radio" name="period" value="month" checked><span>Месяц</span></label><label><input type="radio" name="period" value="year"><span>Год</span></label></div>
+    <label>Категория<select name="cat"></select></label>
+    <label>Насколько пользуетесь</label>
+    <div class="seg"><label><input type="radio" name="use" value="love" checked><span>❤️ Часто</span></label><label><input type="radio" name="use" value="ok"><span>🙂 Иногда</span></label><label><input type="radio" name="use" value="rare"><span>💤 Почти нет</span></label></div>
+    <div class="actions"><button type="button" class="del" id="del" hidden>Удалить</button><button value="cancel" formnovalidate>Отмена</button><button class="save" value="save">Сохранить</button></div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const KEY = 'subs-v1';
+  const CATS = { 'Видео': '#ff6b6b', 'Музыка': '#b6f36a', 'Сервисы': '#5ab8ff', 'Покупки': '#ffb547', 'Игры': '#c084fc', 'Чтение': '#2dd4bf', 'Здоровье': '#f472b6', 'Обучение': '#facc15', 'Другое': '#8b91a1' };
+  const PRESETS = [['🎬', 'Онлайн-кинотеатр', 399, 'month', 'Видео'], ['🎵', 'Музыка', 199, 'month', 'Музыка'], ['☁️', 'Облако 200 ГБ', 149, 'month', 'Сервисы'], ['📦', 'Доставка Плюс', 299, 'month', 'Покупки'], ['🎮', 'Игровая подписка', 599, 'month', 'Игры'], ['💬', 'Мессенджер Премиум', 299, 'month', 'Сервисы'], ['📚', 'Электронные книги', 399, 'month', 'Чтение'], ['🏋️', 'Фитнес-клуб', 3500, 'month', 'Здоровье'], ['🧠', 'Курсы английского', 990, 'month', 'Обучение'], ['🛡️', 'VPN на год', 2990, 'year', 'Сервисы']];
+  const fmt = (v) => `${Math.round(v).toLocaleString('ru-RU')} ₽`;
+  const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const parse = (s) => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const today = () => { const d = new Date(); d.setHours(0, 0, 0, 0); return d; };
+  const perMonth = (s) => (s.period === 'month' ? s.price : s.period === 'year' ? s.price / 12 : s.price * 52 / 12);
+  const PER = { week: 'в неделю', month: 'в месяц', year: 'в год' };
+
+  let subs = [];
+  try { subs = JSON.parse(localStorage.getItem(KEY)) || []; } catch {}
+  const save = () => { try { localStorage.setItem(KEY, JSON.stringify(subs)); } catch {} };
+  let view = today(); view.setDate(1);
+  let selDay = null, editing = null;
+
+  function step(d, period, dir = 1) {
+    const n = new Date(d);
+    if (period === 'week') n.setDate(n.getDate() + 7 * dir);
+    else if (period === 'month') n.setMonth(n.getMonth() + dir);
+    else n.setFullYear(n.getFullYear() + dir);
+    return n;
+  }
+  // прошедшие даты списаний автоматически переносятся на следующий период
+  function rollForward() {
+    const t = today(); let changed = false;
+    for (const s of subs) { let d = parse(s.next); while (d < t) { d = step(d, s.period); changed = true; } s.next = iso(d); }
+    if (changed) save();
+  }
+  function chargesBetween(from, to) {
+    const out = [];
+    for (const s of subs) {
+      let d = parse(s.next);
+      while (d > from) d = step(d, s.period, -1);
+      while (d <= to) { if (d >= from) out.push({ s, d: new Date(d) }); d = step(d, s.period); }
+    }
+    return out.sort((a, b) => a.d - b.d);
+  }
+  const daysTo = (d) => Math.round((d - today()) / 864e5);
+  const when = (d) => { const n = daysTo(d); return n === 0 ? 'сегодня' : n === 1 ? 'завтра' : n < 0 ? `${-n} дн. назад` : `через ${n} дн.`; };
+
+  function render() {
+    rollForward();
+    const month = subs.reduce((a, s) => a + perMonth(s), 0);
+    $('month').textContent = fmt(month);
+    $('year').textContent = fmt(month * 12);
+    $('compare').textContent = month ? `Это ≈ ${Math.round(month * 12 / 250)} чашек кофе в год или ${(month * 12 / 1000).toFixed(1).replace('.', ',')} тыс. ₽ на что-то другое.` : '';
+    // кольцевая диаграмма по категориям
+    const byCat = {};
+    subs.forEach((s) => (byCat[s.cat] = (byCat[s.cat] || 0) + perMonth(s)));
+    let acc = 0; const C = 2 * Math.PI * 15.915;
+    $('donut').innerHTML = `<circle cx="21" cy="21" r="15.915" fill="none" stroke="#20242e" stroke-width="6"/>` + Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => {
+      const len = v / month * 100, seg = `<circle cx="21" cy="21" r="15.915" fill="none" stroke="${CATS[c] || '#888'}" stroke-width="6" stroke-dasharray="${Math.max(0, len - 0.8)} ${100 - len + 0.8}" stroke-dashoffset="${25 - acc}" pathLength="100"/>`;
+      acc += len; return seg;
+    }).join('') + `<text x="21" y="23.5" text-anchor="middle" font-size="7" font-weight="800" fill="#eef0f5" font-family="Manrope">${subs.length}</text>`;
+    $('legend').innerHTML = Object.entries(byCat).sort((a, b) => b[1] - a[1]).map(([c, v]) => `<span><i style="background:${CATS[c]}"></i>${c} · ${fmt(v)}</span>`).join('');
+
+    // список
+    const sorted = [...subs].sort((a, b) => parse(a.next) - parse(b.next));
+    $('list').innerHTML = sorted.length ? sorted.map((s) => {
+      const d = parse(s.next), n = daysTo(d);
+      return `<button class="sub" data-id="${s.id}" style="--c:${CATS[s.cat]}"><span class="ico">${s.emoji}</span>
+        <span><b>${esc(s.name)}</b><small class="${n <= 3 ? 'soon' : ''}">Списание ${when(d)} · ${d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' })}</small></span>
+        <span class="price">${fmt(s.price)}<small>${PER[s.period]}</small></span></button>`;
+    }).join('') : `<div class="empty">Пока пусто. Добавьте подписку или начните с популярных:<div class="presets">${PRESETS.map((p, i) => `<button data-preset="${i}">${p[0]} ${p[1]}</button>`).join('')}</div></div>`;
+    $('list').querySelectorAll('[data-id]').forEach((b) => b.onclick = () => openForm(subs.find((s) => s.id === b.dataset.id)));
+    $('list').querySelectorAll('[data-preset]').forEach((b) => b.onclick = () => { const [emoji, name, price, period, cat] = PRESETS[+b.dataset.preset]; const d = today(); d.setDate(d.getDate() + 1 + (Math.random() * 25 | 0)); openForm(null, { emoji, name, price, period, cat, next: iso(d), use: 'love' }); });
+    renderCal(); renderTips();
+  }
+
+  function renderCal() {
+    $('monthName').textContent = view.toLocaleDateString('ru-RU', { month: 'long', year: 'numeric' });
+    const start = new Date(view); start.setDate(1 - ((view.getDay() + 6) % 7));
+    const end = new Date(start); end.setDate(start.getDate() + 41);
+    const charges = chargesBetween(start, end);
+    const t = iso(today());
+    let html = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].map((d) => `<div class="wd">${d}</div>`).join('');
+    for (let i = 0; i < 42; i++) {
+      const d = new Date(start); d.setDate(start.getDate() + i);
+      const key = iso(d), list = charges.filter((c) => iso(c.d) === key);
+      html += `<button class="day ${d.getMonth() !== view.getMonth() ? 'out' : ''} ${key === t ? 'today' : ''} ${list.length ? 'has' : ''} ${selDay === key ? 'sel' : ''}" data-day="${key}">${d.getDate()}<span>${list.map((c) => c.s.emoji).join('')}</span></button>`;
+    }
+    $('cal').innerHTML = html;
+    $('cal').querySelectorAll('[data-day]').forEach((b) => b.onclick = () => {
+      selDay = b.dataset.day;
+      const list = charges.filter((c) => iso(c.d) === selDay);
+      $('daylist').innerHTML = list.length ? list.map((c) => `${c.s.emoji} <b style="color:var(--text)">${esc(c.s.name)}</b> — ${fmt(c.s.price)}`).join('<br>') + (list.length > 1 ? `<br>Итого: <b style="color:var(--text)">${fmt(list.reduce((a, c) => a + c.s.price, 0))}</b>` : '') : `${parse(selDay).toLocaleDateString('ru-RU', { day: 'numeric', month: 'long' })}: списаний нет.`;
+      renderCal();
+    });
+  }
+
+  function renderTips() {
+    const tips = [];
+    const t = today(), in30 = new Date(t); in30.setDate(t.getDate() + 30);
+    const next30 = chargesBetween(t, in30);
+    if (next30.length) tips.push(['📅', `За ближайшие 30 дней спишется <b>${fmt(next30.reduce((a, c) => a + c.s.price, 0))}</b> (${next30.length} платеж${next30.length === 1 ? '' : next30.length < 5 ? 'а' : 'ей'}).`]);
+    const rare = subs.filter((s) => s.use === 'rare');
+    if (rare.length) tips.push(['💤', `Почти не пользуетесь: ${rare.map((s) => esc(s.name)).join(', ')}. Если отказаться, сэкономите <b>${fmt(rare.reduce((a, s) => a + perMonth(s), 0) * 12)}</b> в год.`]);
+    const yearly = subs.filter((s) => s.period === 'month' && s.price >= 300);
+    if (yearly.length) tips.push(['🗓️', `Для «${esc(yearly[0].name)}» проверьте годовой тариф: обычно он на 15–30% дешевле, это до <b>${fmt(yearly[0].price * 12 * 0.2)}</b> в год.`]);
+    const cats = {}; subs.forEach((s) => (cats[s.cat] = (cats[s.cat] || 0) + 1));
+    const dup = Object.entries(cats).find(([, n]) => n >= 2);
+    if (dup) tips.push(['🔍', `В категории «${dup[0]}» ${dup[1]} подписки. Может, какие-то дублируют друг друга?`]);
+    const soon = subs.filter((s) => daysTo(parse(s.next)) <= 2);
+    if (soon.length) tips.push(['⚠️', `Скоро спишется: ${soon.map((s) => `${s.emoji} ${esc(s.name)} ${when(parse(s.next))}`).join(', ')}. Если хотите отменить, сейчас самое время.`]);
+    if (!tips.length) tips.push(['✨', 'Добавьте подписки и отметьте, как часто ими пользуетесь, — здесь появятся подсказки, где можно сэкономить.']);
+    $('tips').innerHTML = tips.map(([i, t]) => `<div class="tip"><span>${i}</span><span>${t}</span></div>`).join('');
+  }
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+  // ---------- Форма ----------
+  const form = $('form');
+  form.cat.innerHTML = Object.keys(CATS).map((c) => `<option>${c}</option>`).join('');
+  function openForm(sub, preset) {
+    editing = sub || null;
+    const v = sub || preset || { emoji: '📺', name: '', price: '', period: 'month', cat: 'Сервисы', use: 'love', next: iso(today()) };
+    $('formTitle').textContent = sub ? 'Подписка' : 'Новая подписка';
+    form.emoji.value = v.emoji; form.name.value = v.name; form.price.value = v.price; form.next.value = v.next;
+    form.cat.value = v.cat; form.period.value = v.period; form.use.value = v.use;
+    $('del').hidden = !sub;
+    $('dlg').showModal();
+  }
+  $('add').onclick = () => openForm();
+  $('dlg').addEventListener('close', () => {
+    if ($('dlg').returnValue !== 'save') return;
+    const data = { emoji: form.emoji.value.trim() || '📺', name: form.name.value.trim(), price: Math.max(1, +form.price.value), next: form.next.value, period: form.period.value, cat: form.cat.value, use: form.use.value };
+    if (editing) Object.assign(editing, data); else subs.push({ id: Math.random().toString(36).slice(2, 9), ...data });
+    save(); render();
+  });
+  $('del').onclick = () => { if (editing && confirm(`Удалить «${editing.name}»?`)) { subs = subs.filter((s) => s !== editing); save(); $('dlg').close(); render(); } };
+  $('prev').onclick = () => { view.setMonth(view.getMonth() - 1); renderCal(); };
+  $('nextM').onclick = () => { view.setMonth(view.getMonth() + 1); renderCal(); };
+
+  render();
+})();
+</script>
+</body>
+</html>
